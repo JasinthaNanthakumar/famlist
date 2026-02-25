@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "FamList",
+    "slug": "famlist",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "backgroundColor": "#6c63ff"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#6c63ff"
+      },
+      "package": "com.famlist.app"
+    }
+  }
+}
