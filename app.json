@@ -4,15 +4,17 @@
     "slug": "famlist",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "splash": {
-      "backgroundColor": "#6c63ff"
-    },
+    "platforms": ["android"],
     "android": {
+      "package": "com.famlist.app",
       "adaptiveIcon": {
         "backgroundColor": "#6c63ff"
-      },
-      "package": "com.famlist.app"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
     }
   }
 }
