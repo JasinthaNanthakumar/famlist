@@ -13,8 +13,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "3a5b61bb-110b-49b3-8a6a-29849133c894"
       }
-    }
+    },
+    "owner": "jasinthan"
   }
 }
