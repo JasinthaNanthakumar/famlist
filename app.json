@@ -4,6 +4,7 @@
     "slug": "famlist",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./icon.png",
     "platforms": ["android"],
     "splash": {
       "backgroundColor": "#6c63ff"
@@ -11,6 +12,7 @@
     "android": {
       "package": "com.famlist.app",
       "adaptiveIcon": {
+        "foregroundImage": "./icon.png",
         "backgroundColor": "#6c63ff"
       }
     },
