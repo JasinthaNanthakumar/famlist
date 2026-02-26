@@ -5,6 +5,9 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "platforms": ["android"],
+    "splash": {
+      "backgroundColor": "#6c63ff"
+    },
     "android": {
       "package": "com.famlist.app",
       "adaptiveIcon": {
