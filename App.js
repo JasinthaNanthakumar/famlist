@@ -1,915 +1,751 @@
-import { useState, useEffect } from "react";
+import React, { useState } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity, TextInput,
+  StyleSheet, Modal, SafeAreaView, StatusBar, FlatList, Alert
+} from 'react-native';
 
-// ─── Icons (inline SVG components) ───────────────────────────────────────────
-const Icon = ({ d, size = 20, color = "currentColor", fill = "none", strokeWidth = 2 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-    {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
-  </svg>
-);
-
-const Icons = {
-  shopping: "M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0",
-  trip: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z",
-  wish: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
-  entertainment: "M23 7l-7 5 7 5V7zM1 5h15a2 2 0 012 2v10a2 2 0 01-2 2H1V5z",
-  tasks: "M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11",
-  home: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z",
-  plus: "M12 5v14M5 12h14",
-  check: "M20 6L9 17l-5-5",
-  trash: "M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6",
-  bell: "M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0",
-  star: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
-  film: "M19.82 2H4.18A2.18 2.18 0 002 4.18v15.64A2.18 2.18 0 004.18 22h15.64A2.18 2.18 0 0022 19.82V4.18A2.18 2.18 0 0019.82 2zM7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5",
-  edit: "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
-  close: "M18 6L6 18M6 6l12 12",
-  bag: "M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18",
-  plane: "M21 16v-2l-8-5V3.5A1.5 1.5 0 0011.5 2v0A1.5 1.5 0 0010 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z",
-  heart: "M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z",
-  tv: "M33 7h-2M14 7h-2M21 2v5M21 17v5M3 7h18v10H3z",
-  user: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
-  assign: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75",
-  calendar: "M3 9h18M16 2v4M8 2v4M3 4h18a1 1 0 011 1v15a1 1 0 01-1 1H3a1 1 0 01-1-1V5a1 1 0 011-1z",
-  repeat: "M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3",
+const COLORS = {
+  primary: '#6c63ff', primary2: '#a855f7',
+  shopping: '#22c55e', trip: '#3b82f6', wish: '#a855f7',
+  ent: '#ef4444', tasks: '#f59e0b',
+  bg: '#f0f4ff', card: '#fff', text: '#1e293b', muted: '#94a3b8',
 };
 
-// ─── Initial Data ─────────────────────────────────────────────────────────────
-const initialData = {
+const SEED = {
   shoppingLists: [
-    {
-      id: 1, name: "Vegetables & Fruits", color: "#22c55e", icon: "🥦",
-      items: [
-        { id: 1, name: "Tomatoes", qty: "1 kg", purchased: false, addedBy: "Me" },
-        { id: 2, name: "Spinach", qty: "500g", purchased: true, addedBy: "Me" },
-        { id: 3, name: "Bananas", qty: "6 pcs", purchased: false, addedBy: "Husband" },
-      ]
-    },
-    {
-      id: 2, name: "Groceries", color: "#f59e0b", icon: "🛒",
-      items: [
-        { id: 1, name: "Rice", qty: "5 kg", purchased: false, addedBy: "Me" },
-        { id: 2, name: "Cooking Oil", qty: "1 L", purchased: false, addedBy: "Me" },
-      ]
-    }
+    { id: 1, name: 'Vegetables', icon: '🥦', color: '#22c55e', items: [
+      { id: 1, name: 'Tomatoes', qty: '1 kg', purchased: false, by: 'Me' },
+      { id: 2, name: 'Spinach', qty: '500g', purchased: true, by: 'Me' },
+      { id: 3, name: 'Bananas', qty: '6 pcs', purchased: false, by: 'Husband' },
+    ]},
+    { id: 2, name: 'Groceries', icon: '🛒', color: '#f59e0b', items: [
+      { id: 1, name: 'Rice', qty: '5 kg', purchased: false, by: 'Me' },
+      { id: 2, name: 'Cooking Oil', qty: '1 L', purchased: false, by: 'Me' },
+    ]},
   ],
   trips: [
-    {
-      id: 1, name: "Beach Holiday", destination: "Galle", date: "2026-03-15",
-      items: [
-        { id: 1, name: "Sunscreen", type: "bring", done: false, assignedTo: "Me" },
-        { id: 2, name: "Swimwear", type: "bring", done: true, assignedTo: "Me" },
-        { id: 3, name: "Snacks", type: "buy", done: false, assignedTo: "Husband" },
-        { id: 4, name: "Water Bottles", type: "buy", done: false, assignedTo: "Husband" },
-      ]
-    }
+    { id: 1, name: 'Beach Holiday', destination: 'Galle', date: '2026-03-15', items: [
+      { id: 1, name: 'Sunscreen', type: 'bring', done: false, to: 'Me' },
+      { id: 2, name: 'Swimwear', type: 'bring', done: true, to: 'Me' },
+      { id: 3, name: 'Snacks', type: 'buy', done: false, to: 'Husband' },
+    ]},
   ],
   wishlist: [
-    { id: 1, title: "Gold Earrings", category: "Jewellery", cost: "LKR 8,000", priority: "Dream", completed: false, emoji: "💎" },
-    { id: 2, title: "New Handbag", category: "Fashion", cost: "LKR 5,000", priority: "Medium", completed: false, emoji: "👜" },
-    { id: 3, title: "Dinner at Shangri-La", category: "Experience", cost: "LKR 12,000", priority: "Low", completed: true, emoji: "🍽️" },
+    { id: 1, title: 'Gold Earrings', cat: 'Jewellery', cost: 'LKR 8,000', priority: 'Dream', done: false, emoji: '💎' },
+    { id: 2, title: 'New Handbag', cat: 'Fashion', cost: 'LKR 5,000', priority: 'Medium', done: false, emoji: '👜' },
+    { id: 3, title: 'Dinner at Shangri-La', cat: 'Experience', cost: 'LKR 12,000', priority: 'Low', done: true, emoji: '🍽️' },
   ],
   entertainment: [
-    { id: 1, title: "Oppenheimer", type: "movie", status: "watched", rating: 5, emoji: "🎬" },
-    { id: 2, title: "The Bear", type: "series", status: "watching", rating: null, emoji: "📺" },
-    { id: 3, title: "Mirzapur", type: "series", status: "want", rating: null, emoji: "📺" },
-    { id: 4, title: "Kumkum Bhagya", type: "serial", status: "watching", rating: null, emoji: "📺" },
-    { id: 5, title: "Interstellar", type: "movie", status: "want", rating: null, emoji: "🎬" },
+    { id: 1, title: 'Oppenheimer', type: 'movie', status: 'watched', rating: 5, emoji: '🎬' },
+    { id: 2, title: 'The Bear', type: 'series', status: 'watching', rating: null, emoji: '📺' },
+    { id: 3, title: 'Mirzapur', type: 'series', status: 'want', rating: null, emoji: '📺' },
+    { id: 4, title: 'Kumkum Bhagya', type: 'serial', status: 'watching', rating: null, emoji: '📺' },
   ],
   tasks: [
-    { id: 1, title: "Morning Yoga", category: "routine", dueDate: null, isRecurring: true, completed: false, assignedTo: "Me", reminder: "07:00 AM" },
-    { id: 2, title: "Submit Assignment - Data Structures", category: "exam", dueDate: "2026-02-28", isRecurring: false, completed: false, assignedTo: "Me", reminder: null },
-    { id: 3, title: "Pay Electricity Bill", category: "work", dueDate: "2026-03-01", isRecurring: false, completed: false, assignedTo: "Husband", reminder: null },
-    { id: 4, title: "Weekly Grocery Run", category: "routine", dueDate: null, isRecurring: true, completed: true, assignedTo: "Husband", reminder: "Saturday 10:00 AM" },
-  ]
+    { id: 1, title: 'Morning Yoga', cat: 'routine', due: null, recurring: true, done: false, to: 'Me', reminder: '07:00 AM' },
+    { id: 2, title: 'Submit Assignment', cat: 'exam', due: '2026-02-28', recurring: false, done: false, to: 'Me', reminder: null },
+    { id: 3, title: 'Pay Electricity Bill', cat: 'work', due: '2026-03-01', recurring: false, done: false, to: 'Husband', reminder: null },
+    { id: 4, title: 'Weekly Grocery Run', cat: 'routine', due: null, recurring: true, done: true, to: 'Husband', reminder: 'Sat 10AM' },
+  ],
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Playfair+Display:wght@700&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Nunito', sans-serif; background: #f0f4ff; }
-  :root {
-    --shopping: #22c55e; --trip: #3b82f6; --wish: #a855f7;
-    --entertainment: #ef4444; --tasks: #f59e0b;
-    --bg: #f0f4ff; --card: #fff; --text: #1e293b; --muted: #94a3b8;
-    --radius: 16px; --shadow: 0 4px 20px rgba(0,0,0,0.08);
-  }
-  .app { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--bg); position: relative; overflow: hidden; }
-  .header { padding: 52px 20px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative; overflow: hidden; }
-  .header::before { content:''; position:absolute; top:-40px; right:-40px; width:150px; height:150px; border-radius:50%; background:rgba(255,255,255,0.1); }
-  .header::after { content:''; position:absolute; bottom:-30px; left:-20px; width:100px; height:100px; border-radius:50%; background:rgba(255,255,255,0.08); }
-  .header-top { display:flex; justify-content:space-between; align-items:center; position:relative; z-index:1; }
-  .header h1 { font-family:'Playfair Display', serif; font-size:26px; }
-  .header p { font-size:13px; opacity:0.85; margin-top:4px; }
-  .greeting-badge { background:rgba(255,255,255,0.2); border-radius:20px; padding:6px 12px; font-size:12px; font-weight:700; }
-  .content { padding: 16px; padding-bottom: 100px; }
-  .section-title { font-size:13px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:20px 0 10px; }
-  
-  /* Stats row */
-  .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:4px; }
-  .stat-card { background:white; border-radius:14px; padding:14px 10px; text-align:center; box-shadow:var(--shadow); }
-  .stat-num { font-size:22px; font-weight:900; }
-  .stat-label { font-size:10px; color:var(--muted); font-weight:700; margin-top:2px; }
-  
-  /* Nav */
-  .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:430px; background:white; display:flex; padding:8px 0 20px; border-top:1px solid #e2e8f0; z-index:100; box-shadow:0 -4px 20px rgba(0,0,0,0.08); }
-  .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; padding:4px 0; transition:all 0.2s; }
-  .nav-icon { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; transition:all 0.2s; font-size:18px; }
-  .nav-item.active .nav-icon { transform:scale(1.1); }
-  .nav-label { font-size:9px; font-weight:800; color:var(--muted); }
-  .nav-item.active .nav-label { color:var(--text); }
+// ── Small reusable components ──────────────────────────────────────────────
+const Card = ({ children, style }) => (
+  <View style={[s.card, style]}>{children}</View>
+);
 
-  /* Cards */
-  .card { background:white; border-radius:var(--radius); padding:16px; margin-bottom:12px; box-shadow:var(--shadow); }
-  .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-  .card-title { font-size:15px; font-weight:800; color:var(--text); }
-  .card-subtitle { font-size:12px; color:var(--muted); margin-top:2px; }
-  .badge { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
-  
-  /* Items */
-  .item-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #f1f5f9; }
-  .item-row:last-child { border-bottom:none; }
-  .checkbox { width:22px; height:22px; border-radius:8px; border:2px solid #e2e8f0; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.2s; }
-  .checkbox.checked { background:#22c55e; border-color:#22c55e; }
-  .item-name { flex:1; font-size:14px; font-weight:600; }
-  .item-name.done { text-decoration:line-through; color:var(--muted); }
-  .item-meta { font-size:11px; color:var(--muted); }
-  .item-actions { display:flex; gap:6px; }
-  .icon-btn { background:none; border:none; cursor:pointer; padding:4px; border-radius:8px; color:var(--muted); transition:all 0.2s; }
-  .icon-btn:hover { background:#f1f5f9; color:var(--text); }
-  .icon-btn.danger:hover { background:#fee2e2; color:#ef4444; }
+const Btn = ({ label, onPress, color = COLORS.primary, textColor = '#fff', style }) => (
+  <TouchableOpacity onPress={onPress} style={[s.btn, { backgroundColor: color }, style]}>
+    <Text style={[s.btnText, { color: textColor }]}>{label}</Text>
+  </TouchableOpacity>
+);
 
-  /* Buttons */
-  .btn { padding:10px 18px; border-radius:12px; border:none; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:6px; }
-  .btn-primary { background:linear-gradient(135deg,#667eea,#764ba2); color:white; }
-  .btn-sm { padding:6px 12px; font-size:12px; border-radius:10px; }
-  .btn-outline { background:transparent; border:2px solid #e2e8f0; color:var(--text); }
-  .fab { position:fixed; bottom:88px; right:calc(50% - 215px + 16px); width:54px; height:54px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); border:none; color:white; font-size:26px; cursor:pointer; box-shadow:0 4px 20px rgba(102,126,234,0.5); display:flex; align-items:center; justify-content:center; z-index:99; transition:all 0.2s; }
-  .fab:hover { transform:scale(1.1); }
-  
-  /* Modal */
-  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:flex-end; justify-content:center; animation:fadeIn 0.2s; }
-  .modal { background:white; border-radius:24px 24px 0 0; padding:24px; width:100%; max-width:430px; animation:slideUp 0.3s ease; }
-  .modal h3 { font-size:18px; font-weight:900; margin-bottom:16px; }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  @keyframes slideUp { from{transform:translateY(100px);opacity:0} to{transform:translateY(0);opacity:1} }
-  
-  /* Form */
-  input, select, textarea { width:100%; padding:12px 14px; border:2px solid #e2e8f0; border-radius:12px; font-family:'Nunito',sans-serif; font-size:14px; font-weight:600; outline:none; transition:border 0.2s; margin-bottom:10px; }
-  input:focus, select:focus, textarea:focus { border-color:#667eea; }
-  label { font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:4px; }
-  
-  /* Tags */
-  .tag-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
-  .tag { padding:5px 12px; border-radius:20px; font-size:12px; font-weight:700; cursor:pointer; border:2px solid transparent; transition:all 0.2s; }
-  .tag.active { border-color:currentColor; }
-  
-  /* Progress bar */
-  .progress-bar { height:6px; background:#f1f5f9; border-radius:3px; overflow:hidden; margin-top:8px; }
-  .progress-fill { height:100%; border-radius:3px; transition:width 0.5s; }
-  
-  /* Priority badges */
-  .priority-dream { background:#fdf4ff; color:#a855f7; }
-  .priority-medium { background:#fff7ed; color:#f59e0b; }
-  .priority-low { background:#f0fdf4; color:#22c55e; }
-  
-  /* Entertainment tabs */
-  .tabs { display:flex; background:#f1f5f9; border-radius:12px; padding:4px; margin-bottom:16px; }
-  .tab { flex:1; padding:8px; text-align:center; border-radius:10px; font-size:12px; font-weight:800; cursor:pointer; transition:all 0.2s; color:var(--muted); }
-  .tab.active { background:white; color:var(--text); box-shadow:0 2px 8px rgba(0,0,0,0.1); }
-  
-  /* Status badges */
-  .status-want { background:#f1f5f9; color:var(--muted); }
-  .status-watching { background:#dbeafe; color:#3b82f6; }
-  .status-watched { background:#dcfce7; color:#22c55e; }
-  
-  /* Task category */
-  .cat-routine { background:#fef9c3; color:#ca8a04; }
-  .cat-exam { background:#fee2e2; color:#ef4444; }
-  .cat-work { background:#dbeafe; color:#3b82f6; }
-  .cat-personal { background:#f3e8ff; color:#a855f7; }
-  
-  /* Assigned badge */
-  .assigned-me { background:#667eea22; color:#667eea; }
-  .assigned-husband { background:#f59e0b22; color:#d97706; }
-  
-  /* Empty state */
-  .empty { text-align:center; padding:40px 20px; color:var(--muted); }
-  .empty-icon { font-size:48px; margin-bottom:12px; }
-  
-  /* Home quick actions */
-  .quick-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
-  .quick-card { border-radius:16px; padding:16px; color:white; cursor:pointer; position:relative; overflow:hidden; transition:transform 0.2s; }
-  .quick-card:hover { transform:scale(0.98); }
-  .quick-card .bg-circle { position:absolute; right:-20px; bottom:-20px; width:80px; height:80px; border-radius:50%; background:rgba(255,255,255,0.15); }
-  .quick-card .label { font-size:13px; font-weight:800; }
-  .quick-card .count { font-size:26px; font-weight:900; }
-  
-  /* Notification dot */
-  .notif-dot { width:8px; height:8px; background:#ef4444; border-radius:50%; position:absolute; top:8px; right:8px; }
+const Badge = ({ label, bg, color }) => (
+  <View style={[s.badge, { backgroundColor: bg }]}>
+    <Text style={[s.badgeText, { color }]}>{label}</Text>
+  </View>
+);
 
-  /* Scroll */
-  .scroll-x { display:flex; gap:10px; overflow-x:auto; padding-bottom:8px; scrollbar-width:none; }
-  .scroll-x::-webkit-scrollbar { display:none; }
-  
-  /* List selector */
-  .list-pill { padding:8px 16px; border-radius:20px; font-size:13px; font-weight:700; white-space:nowrap; cursor:pointer; border:2px solid transparent; transition:all 0.2s; background:white; color:var(--muted); box-shadow:0 2px 8px rgba(0,0,0,0.06); }
-  .list-pill.active { color:white; border-color:transparent; }
+const Checkbox = ({ checked, onPress, color = COLORS.shopping }) => (
+  <TouchableOpacity onPress={onPress}
+    style={[s.cb, checked && { backgroundColor: color, borderColor: color }]}>
+    {checked && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '900' }}>✓</Text>}
+  </TouchableOpacity>
+);
 
-  /* Star rating */
-  .stars { display:flex; gap:2px; }
-  .star { font-size:14px; cursor:pointer; }
-`;
+const SectionTitle = ({ title }) => (
+  <Text style={s.sectionTitle}>{title}</Text>
+);
 
-// ─── Main App ─────────────────────────────────────────────────────────────────
-export default function FamListApp() {
-  const [tab, setTab] = useState("home");
-  const [data, setData] = useState(initialData);
-  const [modal, setModal] = useState(null);
-  const [activeList, setActiveList] = useState(0);
-  const [entTab, setEntTab] = useState("all");
-  const [taskFilter, setTaskFilter] = useState("all");
+// ── Add Item Modal ─────────────────────────────────────────────────────────
+function AddModal({ visible, onClose, onAdd, type }) {
+  const [name, setName] = useState('');
+  const [qty, setQty] = useState('');
+  const [cat, setCat] = useState('personal');
+  const [to, setTo] = useState('Me');
+  const [priority, setPriority] = useState('Low');
+  const [itemType, setItemType] = useState('bring');
+  const [entType, setEntType] = useState('movie');
+  const [due, setDue] = useState('');
+  const [reminder, setReminder] = useState('');
+  const [cost, setCost] = useState('');
 
-  // ── helpers ──
-  const updateData = (key, val) => setData(d => ({ ...d, [key]: val }));
-  const closeModal = () => setModal(null);
+  const reset = () => { setName(''); setQty(''); setCat('personal'); setTo('Me'); setPriority('Low'); setItemType('bring'); setEntType('movie'); setDue(''); setReminder(''); setCost(''); };
 
-  // ── Stats ──
-  const pendingTasks = data.tasks.filter(t => !t.completed).length;
-  const pendingShopping = data.shoppingLists.reduce((a, l) => a + l.items.filter(i => !i.purchased).length, 0);
-  const upcomingTrips = data.trips.length;
-
-  // ── TABS ──────────────────────────────────────────────────────────────────
-  const navItems = [
-    { id: "home", label: "Home", icon: "🏠", color: "#667eea" },
-    { id: "shopping", label: "Shopping", icon: "🛒", color: "#22c55e" },
-    { id: "trips", label: "Trips", icon: "✈️", color: "#3b82f6" },
-    { id: "wishlist", label: "Wishlist", icon: "⭐", color: "#a855f7" },
-    { id: "tasks", label: "Tasks", icon: "✅", color: "#f59e0b" },
-  ];
-
-  // ── HOME ──────────────────────────────────────────────────────────────────
-  const HomeTab = () => (
-    <div>
-      <div className="stats-row">
-        <div className="stat-card">
-          <div className="stat-num" style={{ color: "#22c55e" }}>{pendingShopping}</div>
-          <div className="stat-label">To Buy</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-num" style={{ color: "#f59e0b" }}>{pendingTasks}</div>
-          <div className="stat-label">Pending</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-num" style={{ color: "#3b82f6" }}>{upcomingTrips}</div>
-          <div className="stat-label">Trips</div>
-        </div>
-      </div>
-
-      <div className="section-title">Quick Access</div>
-      <div className="quick-grid">
-        {[
-          { label: "Shopping Lists", count: data.shoppingLists.length, bg: "linear-gradient(135deg,#22c55e,#16a34a)", tab: "shopping", icon: "🛒" },
-          { label: "Upcoming Trips", count: data.trips.length, bg: "linear-gradient(135deg,#3b82f6,#2563eb)", tab: "trips", icon: "✈️" },
-          { label: "My Wishes", count: data.wishlist.filter(w => !w.completed).length, bg: "linear-gradient(135deg,#a855f7,#7c3aed)", tab: "wishlist", icon: "⭐" },
-          { label: "Pending Tasks", count: pendingTasks, bg: "linear-gradient(135deg,#f59e0b,#d97706)", tab: "tasks", icon: "✅" },
-        ].map(q => (
-          <div key={q.tab} className="quick-card" style={{ background: q.bg }} onClick={() => setTab(q.tab)}>
-            <div className="bg-circle" />
-            <div style={{ fontSize: 28, marginBottom: 8 }}>{q.icon}</div>
-            <div className="count">{q.count}</div>
-            <div className="label">{q.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="section-title">Today's Reminders</div>
-      {data.tasks.filter(t => !t.completed && t.reminder).map(t => (
-        <div key={t.id} className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px" }}>
-          <div style={{ fontSize: 24 }}>{t.category === "routine" ? "🔔" : t.category === "exam" ? "📚" : "💼"}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{t.title}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{t.reminder} · {t.assignedTo}</div>
-          </div>
-          <span className={`badge ${t.assignedTo === "Me" ? "assigned-me" : "assigned-husband"}`}>{t.assignedTo}</span>
-        </div>
-      ))}
-
-      <div className="section-title">Entertainment Queue</div>
-      <div className="scroll-x">
-        {data.entertainment.filter(e => e.status !== "watched").map(e => (
-          <div key={e.id} className="card" style={{ minWidth: 130, padding: 14, cursor: "pointer" }} onClick={() => setTab("entertainment")}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>{e.emoji}</div>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>{e.title}</div>
-            <div style={{ marginTop: 4 }}>
-              <span className={`badge status-${e.status}`} style={{ fontSize: 10 }}>
-                {e.status === "want" ? "Watch Next" : e.status === "watching" ? "Watching" : "Watched"}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  // ── SHOPPING ──────────────────────────────────────────────────────────────
-  const ShoppingTab = () => {
-    const list = data.shoppingLists[activeList];
-    const done = list.items.filter(i => i.purchased).length;
-    const pct = list.items.length ? Math.round((done / list.items.length) * 100) : 0;
-
-    const toggleItem = (itemId) => {
-      const updated = data.shoppingLists.map((l, idx) =>
-        idx === activeList ? { ...l, items: l.items.map(i => i.id === itemId ? { ...i, purchased: !i.purchased } : i) } : l
-      );
-      updateData("shoppingLists", updated);
-    };
-
-    const deleteItem = (itemId) => {
-      const updated = data.shoppingLists.map((l, idx) =>
-        idx === activeList ? { ...l, items: l.items.filter(i => i.id !== itemId) } : l
-      );
-      updateData("shoppingLists", updated);
-    };
-
-    const clearPurchased = () => {
-      const updated = data.shoppingLists.map((l, idx) =>
-        idx === activeList ? { ...l, items: l.items.filter(i => !i.purchased) } : l
-      );
-      updateData("shoppingLists", updated);
-    };
-
-    return (
-      <div>
-        <div className="scroll-x" style={{ marginBottom: 16 }}>
-          {data.shoppingLists.map((l, idx) => (
-            <div key={l.id} className={`list-pill ${activeList === idx ? "active" : ""}`}
-              style={activeList === idx ? { background: l.color } : {}}
-              onClick={() => setActiveList(idx)}>
-              {l.icon} {l.name}
-            </div>
-          ))}
-          <div className="list-pill" onClick={() => setModal("newList")} style={{ color: "#667eea" }}>+ New List</div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="card-title">{list.icon} {list.name}</div>
-              <div className="card-subtitle">{done}/{list.items.length} items purchased</div>
-            </div>
-            {done > 0 && <button className="btn btn-sm btn-outline" onClick={clearPurchased} style={{ fontSize: 11 }}>Clear done</button>}
-          </div>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${pct}%`, background: list.color }} />
-          </div>
-        </div>
-
-        {list.items.length === 0 && (
-          <div className="empty"><div className="empty-icon">🛒</div><div>No items yet. Add some!</div></div>
-        )}
-
-        {list.items.map(item => (
-          <div key={item.id} className="card" style={{ padding: "12px 16px" }}>
-            <div className="item-row" style={{ padding: 0, border: "none" }}>
-              <div className={`checkbox ${item.purchased ? "checked" : ""}`} onClick={() => toggleItem(item.id)}>
-                {item.purchased && <Icon d={Icons.check} size={13} color="white" />}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div className={`item-name ${item.purchased ? "done" : ""}`}>{item.name}</div>
-                <div className="item-meta">{item.qty} · Added by {item.addedBy}</div>
-              </div>
-              <button className="icon-btn danger" onClick={() => deleteItem(item.id)}>
-                <Icon d={Icons.trash} size={15} />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+  const handle = () => {
+    if (!name.trim()) { Alert.alert('Please enter a name'); return; }
+    onAdd({ name, qty, cat, to, priority, type: itemType, entType, due, reminder, cost });
+    reset();
+    onClose();
   };
 
-  // ── TRIPS ─────────────────────────────────────────────────────────────────
-  const TripsTab = () => {
-    const [activeTripIdx, setActiveTripIdx] = useState(0);
-    const trip = data.trips[activeTripIdx];
-
-    const toggleTripItem = (itemId) => {
-      const updated = data.trips.map((t, idx) =>
-        idx === activeTripIdx ? { ...t, items: t.items.map(i => i.id === itemId ? { ...i, done: !i.done } : i) } : t
-      );
-      updateData("trips", updated);
-    };
-
-    const toBring = trip.items.filter(i => i.type === "bring");
-    const toBuy = trip.items.filter(i => i.type === "buy");
-
-    return (
-      <div>
-        <div className="scroll-x" style={{ marginBottom: 16 }}>
-          {data.trips.map((t, idx) => (
-            <div key={t.id} className={`list-pill ${activeTripIdx === idx ? "active" : ""}`}
-              style={activeTripIdx === idx ? { background: "#3b82f6" } : {}}
-              onClick={() => setActiveTripIdx(idx)}>
-              ✈️ {t.name}
-            </div>
-          ))}
-          <div className="list-pill" onClick={() => setModal("newTrip")} style={{ color: "#3b82f6" }}>+ New Trip</div>
-        </div>
-
-        <div className="card" style={{ background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "white" }}>
-          <div style={{ fontSize: 13, opacity: 0.85 }}>✈️ Trip to</div>
-          <div style={{ fontSize: 22, fontWeight: 900, marginTop: 4 }}>{trip.destination}</div>
-          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>📅 {trip.date}</div>
-          <div style={{ marginTop: 10, display: "flex", gap: 12 }}>
-            <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 700 }}>
-              {toBring.filter(i => i.done).length}/{toBring.length} packed
-            </div>
-            <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 700 }}>
-              {toBuy.filter(i => i.done).length}/{toBuy.length} bought
-            </div>
-          </div>
-        </div>
-
-        {[{ label: "🎒 Items to Bring", items: toBring, type: "bring" }, { label: "🛍️ Items to Buy", items: toBuy, type: "buy" }].map(section => (
-          <div key={section.type}>
-            <div className="section-title">{section.label}</div>
-            {section.items.map(item => (
-              <div key={item.id} className="card" style={{ padding: "12px 16px" }}>
-                <div className="item-row" style={{ padding: 0, border: "none" }}>
-                  <div className={`checkbox ${item.done ? "checked" : ""}`}
-                    style={{ ...(item.done ? {} : { borderColor: "#3b82f6" }) }}
-                    onClick={() => toggleTripItem(item.id)}>
-                    {item.done && <Icon d={Icons.check} size={13} color="white" />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div className={`item-name ${item.done ? "done" : ""}`}>{item.name}</div>
-                    <div className="item-meta">Assigned to {item.assignedTo}</div>
-                  </div>
-                  <span className={`badge ${item.assignedTo === "Me" ? "assigned-me" : "assigned-husband"}`} style={{ fontSize: 11 }}>
-                    {item.assignedTo}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // ── WISHLIST ──────────────────────────────────────────────────────────────
-  const WishlistTab = () => {
-    const toggleWish = (id) => {
-      updateData("wishlist", data.wishlist.map(w => w.id === id ? { ...w, completed: !w.completed } : w));
-    };
-    const deleteWish = (id) => updateData("wishlist", data.wishlist.filter(w => w.id !== id));
-    const pending = data.wishlist.filter(w => !w.completed);
-    const done = data.wishlist.filter(w => w.completed);
-
-    return (
-      <div>
-        <div className="card" style={{ background: "linear-gradient(135deg,#a855f7,#7c3aed)", color: "white", marginBottom: 16 }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>⭐</div>
-          <div style={{ fontSize: 22, fontWeight: 900 }}>{pending.length} Wishes</div>
-          <div style={{ fontSize: 13, opacity: 0.85 }}>Keep dreaming, keep achieving!</div>
-          <div style={{ marginTop: 10, background: "rgba(255,255,255,0.2)", borderRadius: 20, height: 6, overflow: "hidden" }}>
-            <div style={{ height: "100%", background: "white", width: `${data.wishlist.length ? (done.length / data.wishlist.length * 100) : 0}%`, borderRadius: 20, transition: "width 0.5s" }} />
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>{done.length} of {data.wishlist.length} wishes fulfilled</div>
-        </div>
-
-        {pending.length === 0 && <div className="empty"><div className="empty-icon">🌟</div><div>All wishes fulfilled! Add more!</div></div>}
-
-        {pending.map(w => (
-          <div key={w.id} className="card">
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <div style={{ fontSize: 32 }}>{w.emoji}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: 15 }}>{w.title}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{w.category} · {w.cost}</div>
-                <span className={`badge priority-${w.priority.toLowerCase()} ${`priority-${w.priority.toLowerCase()}`}`} style={{ marginTop: 6, display: "inline-block" }}>{w.priority}</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <button className="btn btn-sm" style={{ background: "#dcfce7", color: "#16a34a" }} onClick={() => toggleWish(w.id)}>✓ Done</button>
-                <button className="icon-btn danger" onClick={() => deleteWish(w.id)}><Icon d={Icons.trash} size={15} /></button>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {done.length > 0 && (
-          <>
-            <div className="section-title">✅ Fulfilled Wishes</div>
-            {done.map(w => (
-              <div key={w.id} className="card" style={{ opacity: 0.7 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ fontSize: 28 }}>{w.emoji}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, textDecoration: "line-through", color: "var(--muted)" }}>{w.title}</div>
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{w.category}</div>
-                  </div>
-                  <button className="icon-btn danger" onClick={() => deleteWish(w.id)}><Icon d={Icons.trash} size={15} /></button>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-      </div>
-    );
-  };
-
-  // ── ENTERTAINMENT (shown as part of home / separate mini-tab) ─────────────
-  const EntertainmentTab = () => {
-    const [filter, setFilter] = useState("all");
-    const [statusFilter, setStatusFilter] = useState("all");
-    const types = ["all", "movie", "series", "serial"];
-    const statuses = ["all", "want", "watching", "watched"];
-
-    const filtered = data.entertainment.filter(e =>
-      (filter === "all" || e.type === filter) &&
-      (statusFilter === "all" || e.status === statusFilter)
-    );
-
-    const setStatus = (id, status) => {
-      updateData("entertainment", data.entertainment.map(e => e.id === id ? { ...e, status } : e));
-    };
-    const setRating = (id, rating) => {
-      updateData("entertainment", data.entertainment.map(e => e.id === id ? { ...e, rating } : e));
-    };
-    const deleteEnt = (id) => updateData("entertainment", data.entertainment.filter(e => e.id !== id));
-
-    return (
-      <div>
-        <div className="tabs">
-          {types.map(t => <div key={t} className={`tab ${filter === t ? "active" : ""}`} onClick={() => setFilter(t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</div>)}
-        </div>
-        <div className="tabs" style={{ marginBottom: 16 }}>
-          {statuses.map(s => <div key={s} className={`tab ${statusFilter === s ? "active" : ""}`} onClick={() => setStatusFilter(s)}>
-            {s === "want" ? "Watch Next" : s === "watching" ? "Watching" : s === "watched" ? "Watched" : "All"}
-          </div>)}
-        </div>
-
-        {filtered.length === 0 && <div className="empty"><div className="empty-icon">🎬</div><div>Nothing here yet!</div></div>}
-
-        {filtered.map(e => (
-          <div key={e.id} className="card">
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ fontSize: 32 }}>{e.emoji}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: 15 }}>{e.title}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, textTransform: "capitalize" }}>{e.type}</div>
-                {e.status === "watched" && (
-                  <div className="stars" style={{ marginTop: 4 }}>
-                    {[1, 2, 3, 4, 5].map(n => (
-                      <span key={n} className="star" onClick={() => setRating(e.id, n)} style={{ color: n <= (e.rating || 0) ? "#f59e0b" : "#e2e8f0" }}>★</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
-                <select value={e.status} onChange={ev => setStatus(e.id, ev.target.value)}
-                  style={{ width: "auto", padding: "4px 8px", fontSize: 11, marginBottom: 0 }}>
-                  <option value="want">Watch Next</option>
-                  <option value="watching">Watching</option>
-                  <option value="watched">Watched</option>
-                </select>
-                <button className="icon-btn danger" onClick={() => deleteEnt(e.id)}><Icon d={Icons.trash} size={14} /></button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // ── TASKS ─────────────────────────────────────────────────────────────────
-  const TasksTab = () => {
-    const cats = ["all", "routine", "exam", "work", "personal"];
-    const filtered = data.tasks.filter(t => taskFilter === "all" || t.category === taskFilter);
-    const pending = filtered.filter(t => !t.completed);
-    const done = filtered.filter(t => t.completed);
-
-    const toggleTask = (id) => updateData("tasks", data.tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
-    const deleteTask = (id) => updateData("tasks", data.tasks.filter(t => t.id !== id));
-
-    const catEmoji = { routine: "🔄", exam: "📚", work: "💼", personal: "💜" };
-    const catColors = { routine: "#ca8a04", exam: "#ef4444", work: "#3b82f6", personal: "#a855f7" };
-
-    return (
-      <div>
-        <div className="scroll-x" style={{ marginBottom: 16 }}>
-          {cats.map(c => (
-            <div key={c} className={`list-pill ${taskFilter === c ? "active" : ""}`}
-              style={taskFilter === c ? { background: c === "all" ? "#667eea" : catColors[c] } : {}}
-              onClick={() => setTaskFilter(c)}>
-              {c === "all" ? "📋 All" : `${catEmoji[c]} ${c.charAt(0).toUpperCase() + c.slice(1)}`}
-            </div>
-          ))}
-        </div>
-
-        {pending.length === 0 && done.length === 0 && <div className="empty"><div className="empty-icon">✅</div><div>No tasks here!</div></div>}
-
-        {pending.map(t => (
-          <div key={t.id} className="card">
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <div className="checkbox" style={{ marginTop: 2 }} onClick={() => toggleTask(t.id)}>
-                {t.completed && <Icon d={Icons.check} size={13} color="white" />}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: 14 }}>{t.title}</div>
-                <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                  <span className={`badge cat-${t.category}`} style={{ fontSize: 10 }}>{catEmoji[t.category]} {t.category}</span>
-                  <span className={`badge ${t.assignedTo === "Me" ? "assigned-me" : "assigned-husband"}`} style={{ fontSize: 10 }}>
-                    👤 {t.assignedTo}
-                  </span>
-                  {t.dueDate && <span className="badge" style={{ background: "#fee2e2", color: "#ef4444", fontSize: 10 }}>📅 {t.dueDate}</span>}
-                  {t.reminder && <span className="badge" style={{ background: "#f0fdf4", color: "#16a34a", fontSize: 10 }}>🔔 {t.reminder}</span>}
-                  {t.isRecurring && <span className="badge" style={{ background: "#f1f5f9", color: "#64748b", fontSize: 10 }}>🔄 Recurring</span>}
-                </div>
-              </div>
-              <button className="icon-btn danger" onClick={() => deleteTask(t.id)}><Icon d={Icons.trash} size={15} /></button>
-            </div>
-          </div>
-        ))}
-
-        {done.length > 0 && (
-          <>
-            <div className="section-title">✅ Completed</div>
-            {done.map(t => (
-              <div key={t.id} className="card" style={{ opacity: 0.6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div className="checkbox checked" onClick={() => toggleTask(t.id)}>
-                    <Icon d={Icons.check} size={13} color="white" />
-                  </div>
-                  <div style={{ flex: 1, fontWeight: 700, fontSize: 14, textDecoration: "line-through", color: "var(--muted)" }}>{t.title}</div>
-                  <button className="icon-btn danger" onClick={() => deleteTask(t.id)}><Icon d={Icons.trash} size={15} /></button>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-      </div>
-    );
-  };
-
-  // ── MODALS ────────────────────────────────────────────────────────────────
-  const [form, setForm] = useState({});
-  const setF = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const openModal = (type) => { setForm({}); setModal(type); };
-
-  const handleAddShoppingItem = () => {
-    if (!form.name) return;
-    const updated = data.shoppingLists.map((l, idx) =>
-      idx === activeList ? {
-        ...l, items: [...l.items, { id: Date.now(), name: form.name, qty: form.qty || "1", purchased: false, addedBy: "Me" }]
-      } : l
-    );
-    updateData("shoppingLists", updated);
-    closeModal();
-  };
-
-  const handleAddTask = () => {
-    if (!form.title) return;
-    updateData("tasks", [...data.tasks, {
-      id: Date.now(), title: form.title, category: form.category || "personal",
-      dueDate: form.dueDate || null, isRecurring: form.recurring === "yes",
-      completed: false, assignedTo: form.assignedTo || "Me", reminder: form.reminder || null
-    }]);
-    closeModal();
-  };
-
-  const handleAddWish = () => {
-    if (!form.title) return;
-    const emojis = { Jewellery: "💎", Fashion: "👗", Experience: "🌟", Tech: "📱", Food: "🍽️", Other: "✨" };
-    updateData("wishlist", [...data.wishlist, {
-      id: Date.now(), title: form.title, category: form.category || "Other",
-      cost: form.cost || "?", priority: form.priority || "Low",
-      completed: false, emoji: emojis[form.category] || "✨"
-    }]);
-    closeModal();
-  };
-
-  const handleAddEntertainment = () => {
-    if (!form.title) return;
-    updateData("entertainment", [...data.entertainment, {
-      id: Date.now(), title: form.title, type: form.type || "movie",
-      status: "want", rating: null, emoji: form.type === "movie" ? "🎬" : "📺"
-    }]);
-    closeModal();
-  };
-
-  const handleAddTripItem = () => {
-    if (!form.name) return;
-    const updated = data.trips.map((t, idx) =>
-      idx === 0 ? {
-        ...t, items: [...t.items, { id: Date.now(), name: form.name, type: form.type || "bring", done: false, assignedTo: form.assignedTo || "Me" }]
-      } : t
-    );
-    updateData("trips", updated);
-    closeModal();
-  };
-
-  const getFabAction = () => {
-    switch (tab) {
-      case "shopping": return () => openModal("addShoppingItem");
-      case "trips": return () => openModal("addTripItem");
-      case "wishlist": return () => openModal("addWish");
-      case "entertainment": return () => openModal("addEntertainment");
-      case "tasks": return () => openModal("addTask");
-      default: return null;
-    }
-  };
-
-  const fabAction = getFabAction();
-
-  const tabHeaders = {
-    home: { title: "FamList", sub: "Good morning! 👋" },
-    shopping: { title: "Shopping", sub: "Track your purchases" },
-    trips: { title: "Trip Planner", sub: "Pack smart, travel happy" },
-    wishlist: { title: "My Wishlist", sub: "Dreams & future plans" },
-    entertainment: { title: "Watch List", sub: "Movies, shows & serials" },
-    tasks: { title: "Tasks", sub: "Stay on top of things" },
-  };
-
-  const currentHeader = tabHeaders[tab] || tabHeaders.home;
+  const titles = { shop: '🛒 Add Item', task: '✅ Add Task', wish: '⭐ Add Wish', ent: '🎬 Add to Watch List', trip: '✈️ Add Trip Item' };
 
   return (
-    <>
-      <style>{styles}</style>
-      <div className="app">
-        {/* Header */}
-        <div className="header">
-          <div className="header-top">
-            <div>
-              <h1>{currentHeader.title}</h1>
-              <p>{currentHeader.sub}</p>
-            </div>
-            <div className="greeting-badge">👨‍👩‍👧 Family</div>
-          </div>
-        </div>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={s.modalBox}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>{titles[type] || 'Add'}</Text>
+            <TouchableOpacity onPress={onClose}><Text style={{ fontSize: 20, color: COLORS.muted }}>✕</Text></TouchableOpacity>
+          </View>
 
-        {/* Content */}
-        <div className="content">
-          {tab === "home" && <HomeTab />}
-          {tab === "shopping" && <ShoppingTab />}
-          {tab === "trips" && <TripsTab />}
-          {tab === "wishlist" && <WishlistTab />}
-          {tab === "entertainment" && <EntertainmentTab />}
-          {tab === "tasks" && <TasksTab />}
-        </div>
+          <Text style={s.label}>Name *</Text>
+          <TextInput style={s.input} placeholder="Enter name..." value={name} onChangeText={setName} />
 
-        {/* FAB */}
-        {fabAction && (
-          <button className="fab" onClick={fabAction}>+</button>
-        )}
+          {type === 'shop' && <>
+            <Text style={s.label}>Quantity</Text>
+            <TextInput style={s.input} placeholder="e.g. 1 kg" value={qty} onChangeText={setQty} />
+          </>}
 
-        {/* Bottom Nav */}
-        <div className="bottom-nav">
-          {navItems.map(n => (
-            <div key={n.id} className={`nav-item ${tab === n.id ? "active" : ""}`} onClick={() => setTab(n.id)}>
-              <div className="nav-icon" style={tab === n.id ? { background: `${n.color}22` } : {}}>
-                <span style={{ fontSize: 20 }}>{n.icon}</span>
-              </div>
-              <div className="nav-label" style={tab === n.id ? { color: n.color } : {}}>{n.label}</div>
-            </div>
-          ))}
-          <div className={`nav-item ${tab === "entertainment" ? "active" : ""}`} onClick={() => setTab("entertainment")}>
-            <div className="nav-icon" style={tab === "entertainment" ? { background: "#ef444422" } : {}}>
-              <span style={{ fontSize: 20 }}>🎬</span>
-            </div>
-            <div className="nav-label" style={tab === "entertainment" ? { color: "#ef4444" } : {}}>Watch</div>
-          </div>
-        </div>
+          {type === 'task' && <>
+            <Text style={s.label}>Category</Text>
+            <View style={s.optRow}>
+              {['routine','exam','work','personal'].map(c => (
+                <TouchableOpacity key={c} onPress={() => setCat(c)}
+                  style={[s.optBtn, cat === c && { backgroundColor: COLORS.primary }]}>
+                  <Text style={[s.optText, cat === c && { color: '#fff' }]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.label}>Assign To</Text>
+            <View style={s.optRow}>
+              {['Me','Husband'].map(p => (
+                <TouchableOpacity key={p} onPress={() => setTo(p)}
+                  style={[s.optBtn, to === p && { backgroundColor: COLORS.primary }]}>
+                  <Text style={[s.optText, to === p && { color: '#fff' }]}>{p}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.label}>Due Date (optional)</Text>
+            <TextInput style={s.input} placeholder="e.g. 2026-03-01" value={due} onChangeText={setDue} />
+            <Text style={s.label}>Reminder (optional)</Text>
+            <TextInput style={s.input} placeholder="e.g. 08:00 AM" value={reminder} onChangeText={setReminder} />
+          </>}
 
-        {/* ── MODALS ── */}
-        {modal && (
-          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-            <div className="modal">
-              {/* Add Shopping Item */}
-              {modal === "addShoppingItem" && (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3>🛒 Add Item</h3>
-                    <button className="icon-btn" onClick={closeModal}><Icon d={Icons.close} size={20} /></button>
-                  </div>
-                  <label>Item Name</label>
-                  <input placeholder="e.g. Tomatoes" value={form.name || ""} onChange={e => setF("name", e.target.value)} />
-                  <label>Quantity</label>
-                  <input placeholder="e.g. 1 kg" value={form.qty || ""} onChange={e => setF("qty", e.target.value)} />
-                  <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleAddShoppingItem}>Add Item</button>
-                </>
-              )}
+          {type === 'wish' && <>
+            <Text style={s.label}>Estimated Cost</Text>
+            <TextInput style={s.input} placeholder="e.g. LKR 5,000" value={cost} onChangeText={setCost} />
+            <Text style={s.label}>Priority</Text>
+            <View style={s.optRow}>
+              {['Dream','Medium','Low'].map(p => (
+                <TouchableOpacity key={p} onPress={() => setPriority(p)}
+                  style={[s.optBtn, priority === p && { backgroundColor: COLORS.primary }]}>
+                  <Text style={[s.optText, priority === p && { color: '#fff' }]}>{p}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>}
 
-              {/* Add Task */}
-              {modal === "addTask" && (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3>✅ Add Task</h3>
-                    <button className="icon-btn" onClick={closeModal}><Icon d={Icons.close} size={20} /></button>
-                  </div>
-                  <label>Task Name</label>
-                  <input placeholder="e.g. Buy groceries" value={form.title || ""} onChange={e => setF("title", e.target.value)} />
-                  <label>Category</label>
-                  <select value={form.category || "personal"} onChange={e => setF("category", e.target.value)}>
-                    <option value="routine">🔄 Daily Routine</option>
-                    <option value="exam">📚 Exam / Assignment</option>
-                    <option value="work">💼 Work</option>
-                    <option value="personal">💜 Personal</option>
-                  </select>
-                  <label>Assign To</label>
-                  <select value={form.assignedTo || "Me"} onChange={e => setF("assignedTo", e.target.value)}>
-                    <option value="Me">👩 Me</option>
-                    <option value="Husband">👨 Husband</option>
-                  </select>
-                  <label>Due Date (optional)</label>
-                  <input type="date" value={form.dueDate || ""} onChange={e => setF("dueDate", e.target.value)} />
-                  <label>Reminder Time (optional)</label>
-                  <input placeholder="e.g. 08:00 AM" value={form.reminder || ""} onChange={e => setF("reminder", e.target.value)} />
-                  <label>Recurring?</label>
-                  <select value={form.recurring || "no"} onChange={e => setF("recurring", e.target.value)}>
-                    <option value="no">No</option>
-                    <option value="yes">Yes (Daily)</option>
-                  </select>
-                  <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleAddTask}>Add Task</button>
-                </>
-              )}
+          {type === 'ent' && <>
+            <Text style={s.label}>Type</Text>
+            <View style={s.optRow}>
+              {['movie','series','serial'].map(t => (
+                <TouchableOpacity key={t} onPress={() => setEntType(t)}
+                  style={[s.optBtn, entType === t && { backgroundColor: COLORS.primary }]}>
+                  <Text style={[s.optText, entType === t && { color: '#fff' }]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>}
 
-              {/* Add Wish */}
-              {modal === "addWish" && (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3>⭐ Add Wish</h3>
-                    <button className="icon-btn" onClick={closeModal}><Icon d={Icons.close} size={20} /></button>
-                  </div>
-                  <label>Wish / Plan</label>
-                  <input placeholder="e.g. Gold Earrings" value={form.title || ""} onChange={e => setF("title", e.target.value)} />
-                  <label>Category</label>
-                  <select value={form.category || "Other"} onChange={e => setF("category", e.target.value)}>
-                    <option value="Jewellery">💎 Jewellery</option>
-                    <option value="Fashion">👗 Fashion</option>
-                    <option value="Experience">🌟 Experience</option>
-                    <option value="Tech">📱 Tech</option>
-                    <option value="Food">🍽️ Food & Dining</option>
-                    <option value="Other">✨ Other</option>
-                  </select>
-                  <label>Estimated Cost</label>
-                  <input placeholder="e.g. LKR 5,000" value={form.cost || ""} onChange={e => setF("cost", e.target.value)} />
-                  <label>Priority</label>
-                  <select value={form.priority || "Low"} onChange={e => setF("priority", e.target.value)}>
-                    <option value="Dream">💜 Dream</option>
-                    <option value="Medium">🔥 Medium</option>
-                    <option value="Low">🌱 Low</option>
-                  </select>
-                  <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleAddWish}>Add Wish</button>
-                </>
-              )}
+          {type === 'trip' && <>
+            <Text style={s.label}>Type</Text>
+            <View style={s.optRow}>
+              {['bring','buy'].map(t => (
+                <TouchableOpacity key={t} onPress={() => setItemType(t)}
+                  style={[s.optBtn, itemType === t && { backgroundColor: COLORS.primary }]}>
+                  <Text style={[s.optText, itemType === t && { color: '#fff' }]}>
+                    {t === 'bring' ? '🎒 Bring' : '🛍️ Buy'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.label}>Assign To</Text>
+            <View style={s.optRow}>
+              {['Me','Husband'].map(p => (
+                <TouchableOpacity key={p} onPress={() => setTo(p)}
+                  style={[s.optBtn, to === p && { backgroundColor: COLORS.primary }]}>
+                  <Text style={[s.optText, to === p && { color: '#fff' }]}>{p}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>}
 
-              {/* Add Entertainment */}
-              {modal === "addEntertainment" && (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3>🎬 Add to Watch List</h3>
-                    <button className="icon-btn" onClick={closeModal}><Icon d={Icons.close} size={20} /></button>
-                  </div>
-                  <label>Title</label>
-                  <input placeholder="e.g. Oppenheimer" value={form.title || ""} onChange={e => setF("title", e.target.value)} />
-                  <label>Type</label>
-                  <select value={form.type || "movie"} onChange={e => setF("type", e.target.value)}>
-                    <option value="movie">🎬 Movie</option>
-                    <option value="series">📺 Web Series</option>
-                    <option value="serial">📺 Serial / Daily Show</option>
-                  </select>
-                  <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleAddEntertainment}>Add to List</button>
-                </>
-              )}
-
-              {/* Add Trip Item */}
-              {modal === "addTripItem" && (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3>✈️ Add Trip Item</h3>
-                    <button className="icon-btn" onClick={closeModal}><Icon d={Icons.close} size={20} /></button>
-                  </div>
-                  <label>Item Name</label>
-                  <input placeholder="e.g. Sunscreen" value={form.name || ""} onChange={e => setF("name", e.target.value)} />
-                  <label>Type</label>
-                  <select value={form.type || "bring"} onChange={e => setF("type", e.target.value)}>
-                    <option value="bring">🎒 Need to Bring</option>
-                    <option value="buy">🛍️ Need to Buy</option>
-                  </select>
-                  <label>Assign To</label>
-                  <select value={form.assignedTo || "Me"} onChange={e => setF("assignedTo", e.target.value)}>
-                    <option value="Me">👩 Me</option>
-                    <option value="Husband">👨 Husband</option>
-                  </select>
-                  <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleAddTripItem}>Add Item</button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </>
+          <Btn label="Add ✓" onPress={handle} style={{ marginTop: 8 }} />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
   );
 }
+
+// ── HOME TAB ───────────────────────────────────────────────────────────────
+function HomeTab({ data, setTab }) {
+  const pendingShop = data.shoppingLists.reduce((a, l) => a + l.items.filter(i => !i.purchased).length, 0);
+  const pendingTask = data.tasks.filter(t => !t.done).length;
+  const wishes = data.wishlist.filter(w => !w.done).length;
+
+  const quickCards = [
+    { label: 'Shopping', count: pendingShop, bg: '#22c55e', t: 'shopping', icon: '🛒' },
+    { label: 'Trips', count: data.trips.length, bg: '#3b82f6', t: 'trips', icon: '✈️' },
+    { label: 'Wishlist', count: wishes, bg: '#a855f7', t: 'wishlist', icon: '⭐' },
+    { label: 'Tasks', count: pendingTask, bg: '#f59e0b', t: 'tasks', icon: '✅' },
+  ];
+
+  return (
+    <ScrollView showsVerticalScrollIndicator={false}>
+      {/* Stats */}
+      <View style={s.statsRow}>
+        {[{num: pendingShop, lbl: 'To Buy', color: '#22c55e'}, {num: pendingTask, lbl: 'Pending', color: '#f59e0b'}, {num: wishes, lbl: 'Wishes', color: '#a855f7'}].map(st => (
+          <Card key={st.lbl} style={s.statCard}>
+            <Text style={[s.statNum, { color: st.color }]}>{st.num}</Text>
+            <Text style={s.statLbl}>{st.lbl}</Text>
+          </Card>
+        ))}
+      </View>
+
+      <SectionTitle title="Quick Access" />
+      <View style={s.quickGrid}>
+        {quickCards.map(q => (
+          <TouchableOpacity key={q.t} onPress={() => setTab(q.t)}
+            style={[s.qCard, { backgroundColor: q.bg }]}>
+            <Text style={{ fontSize: 28, marginBottom: 6 }}>{q.icon}</Text>
+            <Text style={s.qNum}>{q.count}</Text>
+            <Text style={s.qLbl}>{q.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <SectionTitle title="🔔 Reminders" />
+      {data.tasks.filter(t => !t.done && t.reminder).map(t => (
+        <Card key={t.id} style={s.reminderCard}>
+          <Text style={{ fontSize: 22 }}>{t.cat === 'routine' ? '🔄' : t.cat === 'exam' ? '📚' : '💼'}</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={s.reminderTitle}>{t.title}</Text>
+            <Text style={s.reminderSub}>{t.reminder} · {t.to}</Text>
+          </View>
+          <Badge label={t.to} bg={t.to === 'Me' ? '#ede9fe' : '#fef9c3'} color={t.to === 'Me' ? '#6c63ff' : '#ca8a04'} />
+        </Card>
+      ))}
+
+      <SectionTitle title="🎬 Watch Queue" />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {data.entertainment.filter(e => e.status !== 'watched').map(e => (
+          <TouchableOpacity key={e.id} onPress={() => setTab('entertainment')} style={s.hCard}>
+            <Text style={{ fontSize: 30, marginBottom: 6 }}>{e.emoji}</Text>
+            <Text style={s.hCardTitle}>{e.title}</Text>
+            <Badge label={e.status === 'watching' ? 'Watching' : 'Watch Next'}
+              bg={e.status === 'watching' ? '#dbeafe' : '#f1f5f9'}
+              color={e.status === 'watching' ? '#2563eb' : '#64748b'} />
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+      <View style={{ height: 20 }} />
+    </ScrollView>
+  );
+}
+
+// ── SHOPPING TAB ───────────────────────────────────────────────────────────
+function ShoppingTab({ data, upd }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [modal, setModal] = useState(false);
+  const list = data.shoppingLists[activeIdx] || data.shoppingLists[0];
+  const done = list.items.filter(i => i.purchased).length;
+  const pct = list.items.length ? done / list.items.length : 0;
+
+  const toggle = (iid) => upd('shoppingLists', data.shoppingLists.map((l, li) =>
+    li === activeIdx ? { ...l, items: l.items.map(i => i.id === iid ? { ...i, purchased: !i.purchased } : i) } : l));
+
+  const del = (iid) => upd('shoppingLists', data.shoppingLists.map((l, li) =>
+    li === activeIdx ? { ...l, items: l.items.filter(i => i.id !== iid) } : l));
+
+  const addItem = (f) => upd('shoppingLists', data.shoppingLists.map((l, li) =>
+    li === activeIdx ? { ...l, items: [...l.items, { id: Date.now(), name: f.name, qty: f.qty || '1', purchased: false, by: 'Me' }] } : l));
+
+  return (
+    <View style={{ flex: 1 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.pillRow}>
+        {data.shoppingLists.map((l, li) => (
+          <TouchableOpacity key={l.id} onPress={() => setActiveIdx(li)}
+            style={[s.pill, activeIdx === li && { backgroundColor: l.color }]}>
+            <Text style={[s.pillText, activeIdx === li && { color: '#fff' }]}>{l.icon} {l.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <Card style={{ marginHorizontal: 14, marginBottom: 10 }}>
+        <View style={s.row}>
+          <View>
+            <Text style={s.cardTitle}>{list.icon} {list.name}</Text>
+            <Text style={s.cardSub}>{done}/{list.items.length} purchased</Text>
+          </View>
+          {done > 0 && <Btn label="Clear done" onPress={() => upd('shoppingLists', data.shoppingLists.map((l, li) => li === activeIdx ? { ...l, items: l.items.filter(i => !i.purchased) } : l))} color="#f1f5f9" textColor={COLORS.text} style={s.btnSm} />}
+        </View>
+        <View style={s.progBar}>
+          <View style={[s.progFill, { width: `${pct * 100}%`, backgroundColor: list.color }]} />
+        </View>
+      </Card>
+
+      <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 14 }}>
+        {list.items.length === 0 && <View style={s.empty}><Text style={s.emptyIcon}>🛒</Text><Text style={s.emptyText}>No items yet. Tap + to add!</Text></View>}
+        {list.items.map(item => (
+          <Card key={item.id} style={{ padding: 12, marginBottom: 8 }}>
+            <View style={s.row}>
+              <Checkbox checked={item.purchased} onPress={() => toggle(item.id)} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={[s.iName, item.purchased && s.done]}>{item.name}</Text>
+                <Text style={s.iMeta}>{item.qty} · {item.by}</Text>
+              </View>
+              <TouchableOpacity onPress={() => del(item.id)}><Text style={s.delBtn}>🗑️</Text></TouchableOpacity>
+            </View>
+          </Card>
+        ))}
+        <View style={{ height: 80 }} />
+      </ScrollView>
+
+      <AddModal visible={modal} onClose={() => setModal(false)} onAdd={addItem} type="shop" />
+      <TouchableOpacity style={s.fab} onPress={() => setModal(true)}><Text style={s.fabText}>+</Text></TouchableOpacity>
+    </View>
+  );
+}
+
+// ── TRIPS TAB ──────────────────────────────────────────────────────────────
+function TripsTab({ data, upd }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [modal, setModal] = useState(false);
+  const trip = data.trips[activeIdx];
+
+  if (!trip) return (
+    <View style={s.empty}><Text style={s.emptyIcon}>✈️</Text><Text style={s.emptyText}>No trips yet!</Text></View>
+  );
+
+  const bring = trip.items.filter(i => i.type === 'bring');
+  const buy = trip.items.filter(i => i.type === 'buy');
+
+  const toggle = (iid) => upd('trips', data.trips.map((t, ti) =>
+    ti === activeIdx ? { ...t, items: t.items.map(i => i.id === iid ? { ...i, done: !i.done } : i) } : t));
+
+  const del = (iid) => upd('trips', data.trips.map((t, ti) =>
+    ti === activeIdx ? { ...t, items: t.items.filter(i => i.id !== iid) } : t));
+
+  const addItem = (f) => upd('trips', data.trips.map((t, ti) =>
+    ti === activeIdx ? { ...t, items: [...t.items, { id: Date.now(), name: f.name, type: f.type, done: false, to: f.to }] } : t));
+
+  const TripItems = ({ items, color }) => items.map(item => (
+    <Card key={item.id} style={{ padding: 12, marginBottom: 8 }}>
+      <View style={s.row}>
+        <Checkbox checked={item.done} onPress={() => toggle(item.id)} color={color} />
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text style={[s.iName, item.done && s.done]}>{item.name}</Text>
+          <Text style={s.iMeta}>→ {item.to}</Text>
+        </View>
+        <Badge label={item.to} bg={item.to === 'Me' ? '#ede9fe' : '#fef9c3'} color={item.to === 'Me' ? '#6c63ff' : '#ca8a04'} />
+        <TouchableOpacity onPress={() => del(item.id)} style={{ marginLeft: 8 }}><Text style={s.delBtn}>🗑️</Text></TouchableOpacity>
+      </View>
+    </Card>
+  ));
+
+  return (
+    <View style={{ flex: 1 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.pillRow}>
+        {data.trips.map((t, ti) => (
+          <TouchableOpacity key={t.id} onPress={() => setActiveIdx(ti)}
+            style={[s.pill, activeIdx === ti && { backgroundColor: COLORS.trip }]}>
+            <Text style={[s.pillText, activeIdx === ti && { color: '#fff' }]}>✈️ {t.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 14 }}>
+        <View style={[s.hero, { backgroundColor: COLORS.trip }]}>
+          <Text style={s.heroSub}>✈️ Destination</Text>
+          <Text style={s.heroTitle}>{trip.destination}</Text>
+          <Text style={s.heroSub}>📅 {trip.date}</Text>
+          <View style={s.row}>
+            <View style={s.heroBadge}><Text style={s.heroBadgeText}>{bring.filter(i => i.done).length}/{bring.length} packed</Text></View>
+            <View style={[s.heroBadge, { marginLeft: 8 }]}><Text style={s.heroBadgeText}>{buy.filter(i => i.done).length}/{buy.length} bought</Text></View>
+          </View>
+        </View>
+
+        <SectionTitle title="🎒 Items to Bring" />
+        <TripItems items={bring} color={COLORS.trip} />
+
+        <SectionTitle title="🛍️ Items to Buy" />
+        <TripItems items={buy} color={COLORS.trip} />
+        <View style={{ height: 80 }} />
+      </ScrollView>
+
+      <AddModal visible={modal} onClose={() => setModal(false)} onAdd={addItem} type="trip" />
+      <TouchableOpacity style={[s.fab, { backgroundColor: COLORS.trip }]} onPress={() => setModal(true)}><Text style={s.fabText}>+</Text></TouchableOpacity>
+    </View>
+  );
+}
+
+// ── WISHLIST TAB ───────────────────────────────────────────────────────────
+function WishlistTab({ data, upd }) {
+  const [modal, setModal] = useState(false);
+  const pending = data.wishlist.filter(w => !w.done);
+  const done = data.wishlist.filter(w => w.done);
+  const pct = data.wishlist.length ? done.length / data.wishlist.length : 0;
+
+  const priColors = { Dream: { bg: '#fdf4ff', color: '#a855f7' }, Medium: { bg: '#fff7ed', color: '#f59e0b' }, Low: { bg: '#f0fdf4', color: '#22c55e' } };
+  const emap = { Jewellery: '💎', Fashion: '👗', Experience: '🌟', Tech: '📱', Food: '🍽️', Other: '✨' };
+
+  const toggle = (id) => upd('wishlist', data.wishlist.map(w => w.id === id ? { ...w, done: !w.done } : w));
+  const del = (id) => upd('wishlist', data.wishlist.filter(w => w.id !== id));
+  const addWish = (f) => upd('wishlist', [...data.wishlist, { id: Date.now(), title: f.name, cat: f.cat || 'Other', cost: f.cost || '?', priority: f.priority || 'Low', done: false, emoji: emap[f.cat] || '✨' }]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 14 }}>
+        <View style={[s.hero, { backgroundColor: COLORS.wish }]}>
+          <Text style={{ fontSize: 28, marginBottom: 6 }}>⭐</Text>
+          <Text style={s.heroTitle}>{pending.length} Wishes Pending</Text>
+          <Text style={s.heroSub}>{done.length} of {data.wishlist.length} fulfilled</Text>
+          <View style={[s.progBar, { marginTop: 10, backgroundColor: 'rgba(255,255,255,0.3)' }]}>
+            <View style={[s.progFill, { width: `${pct * 100}%`, backgroundColor: '#fff' }]} />
+          </View>
+        </View>
+
+        {pending.length === 0 && <View style={s.empty}><Text style={s.emptyIcon}>🌟</Text><Text style={s.emptyText}>All wishes fulfilled!</Text></View>}
+
+        {pending.map(w => (
+          <Card key={w.id} style={{ marginBottom: 10 }}>
+            <View style={s.row}>
+              <Text style={{ fontSize: 32 }}>{w.emoji}</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={s.cardTitle}>{w.title}</Text>
+                <Text style={s.cardSub}>{w.cat} · {w.cost}</Text>
+                <Badge label={w.priority} bg={priColors[w.priority]?.bg} color={priColors[w.priority]?.color} />
+              </View>
+              <View>
+                <Btn label="✓ Done" onPress={() => toggle(w.id)} color="#dcfce7" textColor="#16a34a" style={[s.btnSm, { marginBottom: 6 }]} />
+                <TouchableOpacity onPress={() => del(w.id)} style={{ alignItems: 'center' }}><Text style={s.delBtn}>🗑️</Text></TouchableOpacity>
+              </View>
+            </View>
+          </Card>
+        ))}
+
+        {done.length > 0 && <>
+          <SectionTitle title="✅ Fulfilled Wishes" />
+          {done.map(w => (
+            <Card key={w.id} style={{ marginBottom: 8, opacity: 0.6 }}>
+              <View style={s.row}>
+                <Text style={{ fontSize: 26 }}>{w.emoji}</Text>
+                <Text style={[s.iName, s.done, { flex: 1, marginLeft: 12 }]}>{w.title}</Text>
+                <TouchableOpacity onPress={() => del(w.id)}><Text style={s.delBtn}>🗑️</Text></TouchableOpacity>
+              </View>
+            </Card>
+          ))}
+        </>}
+        <View style={{ height: 80 }} />
+      </ScrollView>
+
+      <AddModal visible={modal} onClose={() => setModal(false)} onAdd={addWish} type="wish" />
+      <TouchableOpacity style={[s.fab, { backgroundColor: COLORS.wish }]} onPress={() => setModal(true)}><Text style={s.fabText}>+</Text></TouchableOpacity>
+    </View>
+  );
+}
+
+// ── ENTERTAINMENT TAB ──────────────────────────────────────────────────────
+function EntertainmentTab({ data, upd }) {
+  const [typeF, setTypeF] = useState('all');
+  const [statF, setStatF] = useState('all');
+  const [modal, setModal] = useState(false);
+
+  const filtered = data.entertainment.filter(e =>
+    (typeF === 'all' || e.type === typeF) && (statF === 'all' || e.status === statF));
+
+  const setStatus = (id, status) => upd('entertainment', data.entertainment.map(e => e.id === id ? { ...e, status } : e));
+  const setRating = (id, r) => upd('entertainment', data.entertainment.map(e => e.id === id ? { ...e, rating: r } : e));
+  const del = (id) => upd('entertainment', data.entertainment.filter(e => e.id !== id));
+  const addEnt = (f) => upd('entertainment', [...data.entertainment, { id: Date.now(), title: f.name, type: f.entType || 'movie', status: 'want', rating: null, emoji: f.entType === 'movie' ? '🎬' : '📺' }]);
+
+  const statusColors = { want: { bg: '#f1f5f9', color: '#64748b' }, watching: { bg: '#dbeafe', color: '#2563eb' }, watched: { bg: '#dcfce7', color: '#16a34a' } };
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={{ paddingHorizontal: 14 }}>
+        <View style={s.tabs}>
+          {['all','movie','series','serial'].map(t => (
+            <TouchableOpacity key={t} onPress={() => setTypeF(t)} style={[s.tab, typeF === t && s.tabOn]}>
+              <Text style={[s.tabText, typeF === t && s.tabTextOn]}>{t.charAt(0).toUpperCase() + t.slice(1)}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={s.tabs}>
+          {[['all','All'],['want','Next'],['watching','Watching'],['watched','Watched']].map(([k, l]) => (
+            <TouchableOpacity key={k} onPress={() => setStatF(k)} style={[s.tab, statF === k && s.tabOn]}>
+              <Text style={[s.tabText, statF === k && s.tabTextOn]}>{l}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 14 }}>
+        {filtered.length === 0 && <View style={s.empty}><Text style={s.emptyIcon}>🎬</Text><Text style={s.emptyText}>Nothing here yet!</Text></View>}
+        {filtered.map(e => (
+          <Card key={e.id} style={{ marginBottom: 10 }}>
+            <View style={s.row}>
+              <Text style={{ fontSize: 32 }}>{e.emoji}</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={s.cardTitle}>{e.title}</Text>
+                <Text style={s.cardSub}>{e.type}</Text>
+                {e.status === 'watched' && (
+                  <View style={s.row}>
+                    {[1,2,3,4,5].map(n => (
+                      <TouchableOpacity key={n} onPress={() => setRating(e.id, n)}>
+                        <Text style={{ fontSize: 16, color: n <= (e.rating || 0) ? '#f59e0b' : '#e2e8f0' }}>★</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+              <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                <Badge label={e.status === 'want' ? 'Watch Next' : e.status === 'watching' ? 'Watching' : 'Watched ✓'}
+                  bg={statusColors[e.status]?.bg} color={statusColors[e.status]?.color} />
+                <View style={s.row}>
+                  {['want','watching','watched'].map(st => (
+                    <TouchableOpacity key={st} onPress={() => setStatus(e.id, st)}
+                      style={[s.microBtn, e.status === st && { backgroundColor: COLORS.primary }]}>
+                      <Text style={[{ fontSize: 9, fontWeight: '700' }, e.status === st && { color: '#fff' }]}>
+                        {st === 'want' ? 'Next' : st === 'watching' ? 'Now' : 'Done'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity onPress={() => del(e.id)}><Text style={s.delBtn}>🗑️</Text></TouchableOpacity>
+              </View>
+            </View>
+          </Card>
+        ))}
+        <View style={{ height: 80 }} />
+      </ScrollView>
+
+      <AddModal visible={modal} onClose={() => setModal(false)} onAdd={addEnt} type="ent" />
+      <TouchableOpacity style={[s.fab, { backgroundColor: COLORS.ent }]} onPress={() => setModal(true)}><Text style={s.fabText}>+</Text></TouchableOpacity>
+    </View>
+  );
+}
+
+// ── TASKS TAB ──────────────────────────────────────────────────────────────
+function TasksTab({ data, upd }) {
+  const [catF, setCatF] = useState('all');
+  const [modal, setModal] = useState(false);
+  const catEmoji = { routine: '🔄', exam: '📚', work: '💼', personal: '💜' };
+  const catColors = { routine: '#ca8a04', exam: '#ef4444', work: '#3b82f6', personal: '#a855f7' };
+  const catBg = { routine: '#fef9c3', exam: '#fee2e2', work: '#dbeafe', personal: '#f3e8ff' };
+
+  const filtered = data.tasks.filter(t => catF === 'all' || t.cat === catF);
+  const pending = filtered.filter(t => !t.done);
+  const done = filtered.filter(t => t.done);
+
+  const toggle = (id) => upd('tasks', data.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const del = (id) => upd('tasks', data.tasks.filter(t => t.id !== id));
+  const addTask = (f) => upd('tasks', [...data.tasks, { id: Date.now(), title: f.name, cat: f.cat || 'personal', due: f.due || null, recurring: false, done: false, to: f.to || 'Me', reminder: f.reminder || null }]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.pillRow}>
+        {['all','routine','exam','work','personal'].map(c => (
+          <TouchableOpacity key={c} onPress={() => setCatF(c)}
+            style={[s.pill, catF === c && { backgroundColor: c === 'all' ? COLORS.primary : catColors[c] }]}>
+            <Text style={[s.pillText, catF === c && { color: '#fff' }]}>
+              {c === 'all' ? '📋 All' : `${catEmoji[c]} ${c.charAt(0).toUpperCase() + c.slice(1)}`}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 14 }}>
+        {pending.length === 0 && done.length === 0 && <View style={s.empty}><Text style={s.emptyIcon}>✅</Text><Text style={s.emptyText}>No tasks here!</Text></View>}
+
+        {pending.map(t => (
+          <Card key={t.id} style={{ marginBottom: 10 }}>
+            <View style={s.row}>
+              <Checkbox checked={false} onPress={() => toggle(t.id)} color={COLORS.tasks} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={s.cardTitle}>{t.title}</Text>
+                <View style={[s.row, { flexWrap: 'wrap', gap: 4, marginTop: 6 }]}>
+                  <Badge label={`${catEmoji[t.cat]} ${t.cat}`} bg={catBg[t.cat]} color={catColors[t.cat]} />
+                  <Badge label={`👤 ${t.to}`} bg={t.to === 'Me' ? '#ede9fe' : '#fef9c3'} color={t.to === 'Me' ? '#6c63ff' : '#ca8a04'} />
+                  {t.due && <Badge label={`📅 ${t.due}`} bg="#fee2e2" color="#ef4444" />}
+                  {t.reminder && <Badge label={`🔔 ${t.reminder}`} bg="#dcfce7" color="#16a34a" />}
+                  {t.recurring && <Badge label="🔄 Recurring" bg="#f1f5f9" color="#64748b" />}
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => del(t.id)}><Text style={s.delBtn}>🗑️</Text></TouchableOpacity>
+            </View>
+          </Card>
+        ))}
+
+        {done.length > 0 && <>
+          <SectionTitle title="✅ Completed" />
+          {done.map(t => (
+            <Card key={t.id} style={{ marginBottom: 8, opacity: 0.6 }}>
+              <View style={s.row}>
+                <Checkbox checked={true} onPress={() => toggle(t.id)} color={COLORS.tasks} />
+                <Text style={[s.iName, s.done, { flex: 1, marginLeft: 10 }]}>{t.title}</Text>
+                <TouchableOpacity onPress={() => del(t.id)}><Text style={s.delBtn}>🗑️</Text></TouchableOpacity>
+              </View>
+            </Card>
+          ))}
+        </>}
+        <View style={{ height: 80 }} />
+      </ScrollView>
+
+      <AddModal visible={modal} onClose={() => setModal(false)} onAdd={addTask} type="task" />
+      <TouchableOpacity style={[s.fab, { backgroundColor: COLORS.tasks }]} onPress={() => setModal(true)}><Text style={s.fabText}>+</Text></TouchableOpacity>
+    </View>
+  );
+}
+
+// ── MAIN APP ───────────────────────────────────────────────────────────────
+export default function App() {
+  const [tab, setTab] = useState('home');
+  const [data, setData] = useState(SEED);
+  const upd = (key, val) => setData(d => ({ ...d, [key]: val }));
+
+  const navItems = [
+    { id: 'home', icon: '🏠', label: 'Home', color: COLORS.primary },
+    { id: 'shopping', icon: '🛒', label: 'Shop', color: COLORS.shopping },
+    { id: 'trips', icon: '✈️', label: 'Trips', color: COLORS.trip },
+    { id: 'wishlist', icon: '⭐', label: 'Wishes', color: COLORS.wish },
+    { id: 'entertainment', icon: '🎬', label: 'Watch', color: COLORS.ent },
+    { id: 'tasks', icon: '✅', label: 'Tasks', color: COLORS.tasks },
+  ];
+
+  const headers = {
+    home: { title: 'FamList 👨‍👩‍👧', sub: 'Welcome back!' },
+    shopping: { title: 'Shopping 🛒', sub: 'Track your purchases' },
+    trips: { title: 'Trip Planner ✈️', sub: 'Pack smart, travel happy' },
+    wishlist: { title: 'My Wishlist ⭐', sub: 'Dreams & future plans' },
+    entertainment: { title: 'Watch List 🎬', sub: 'Movies · Series · Serials' },
+    tasks: { title: 'Tasks ✅', sub: 'Stay on top of everything' },
+  };
+  const hdr = headers[tab];
+
+  return (
+    <SafeAreaView style={s.safe}>
+      <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
+
+      {/* Header */}
+      <View style={s.header}>
+        <Text style={s.headerTitle}>{hdr.title}</Text>
+        <Text style={s.headerSub}>{hdr.sub}</Text>
+      </View>
+
+      {/* Content */}
+      <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+        {tab === 'home' && <HomeTab data={data} setTab={setTab} />}
+        {tab === 'shopping' && <ShoppingTab data={data} upd={upd} />}
+        {tab === 'trips' && <TripsTab data={data} upd={upd} />}
+        {tab === 'wishlist' && <WishlistTab data={data} upd={upd} />}
+        {tab === 'entertainment' && <EntertainmentTab data={data} upd={upd} />}
+        {tab === 'tasks' && <TasksTab data={data} upd={upd} />}
+      </View>
+
+      {/* Bottom Nav */}
+      <View style={s.nav}>
+        {navItems.map(n => (
+          <TouchableOpacity key={n.id} style={s.navItem} onPress={() => setTab(n.id)}>
+            <View style={[s.navIcon, tab === n.id && { backgroundColor: n.color + '22' }]}>
+              <Text style={{ fontSize: 20 }}>{n.icon}</Text>
+            </View>
+            <Text style={[s.navLabel, tab === n.id && { color: n.color }]}>{n.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+// ── Styles ─────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.primary },
+  header: { backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 16 },
+  headerTitle: { color: '#fff', fontSize: 22, fontWeight: '900' },
+  headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 },
+  nav: { flexDirection: 'row', backgroundColor: '#fff', paddingVertical: 8, paddingBottom: 12, borderTopWidth: 1, borderTopColor: '#e8edf5' },
+  navItem: { flex: 1, alignItems: 'center', gap: 2 },
+  navIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  navLabel: { fontSize: 9, fontWeight: '800', color: COLORS.muted },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 15, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 },
+  statsRow: { flexDirection: 'row', gap: 9, marginBottom: 4, paddingHorizontal: 14, marginTop: 14 },
+  statCard: { flex: 1, alignItems: 'center', padding: 13 },
+  statNum: { fontSize: 22, fontWeight: '900' },
+  statLbl: { fontSize: 9, color: COLORS.muted, fontWeight: '800', marginTop: 1, textTransform: 'uppercase' },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 14 },
+  qCard: { width: '47%', borderRadius: 16, padding: 15 },
+  qNum: { fontSize: 26, fontWeight: '900', color: '#fff' },
+  qLbl: { fontSize: 12, fontWeight: '800', color: '#fff', marginTop: 2 },
+  reminderCard: { flexDirection: 'row', alignItems: 'center', padding: 12, marginHorizontal: 14, marginBottom: 8 },
+  reminderTitle: { fontWeight: '700', fontSize: 13, color: COLORS.text },
+  reminderSub: { fontSize: 11, color: COLORS.muted },
+  hCard: { width: 120, backgroundColor: '#fff', borderRadius: 14, padding: 13, marginRight: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  hCardTitle: { fontWeight: '800', fontSize: 12, color: COLORS.text, marginBottom: 5 },
+  sectionTitle: { fontSize: 11, fontWeight: '900', color: COLORS.muted, textTransform: 'uppercase', letterSpacing: 1, marginTop: 16, marginBottom: 8, paddingHorizontal: 14 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  btn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
+  btnText: { fontWeight: '800', fontSize: 13 },
+  btnSm: { paddingHorizontal: 11, paddingVertical: 5 },
+  badge: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20, marginTop: 4 },
+  badgeText: { fontSize: 10, fontWeight: '800' },
+  cb: { width: 23, height: 23, borderRadius: 8, borderWidth: 2.5, borderColor: '#e2e8f0', alignItems: 'center', justifyContent: 'center' },
+  pillRow: { paddingHorizontal: 14, marginBottom: 4, marginTop: 10 },
+  pill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#fff', marginRight: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 4, elevation: 2 },
+  pillText: { fontSize: 12, fontWeight: '700', color: COLORS.muted },
+  cardTitle: { fontSize: 14, fontWeight: '800', color: COLORS.text },
+  cardSub: { fontSize: 11, color: COLORS.muted, marginTop: 2 },
+  iName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  iMeta: { fontSize: 11, color: COLORS.muted, marginTop: 1 },
+  done: { textDecorationLine: 'line-through', color: COLORS.muted },
+  delBtn: { fontSize: 16 },
+  progBar: { height: 6, backgroundColor: '#f1f5f9', borderRadius: 3, overflow: 'hidden', marginTop: 10 },
+  progFill: { height: '100%', borderRadius: 3 },
+  hero: { borderRadius: 18, padding: 18, marginBottom: 10 },
+  heroTitle: { fontSize: 20, fontWeight: '900', color: '#fff', marginTop: 4 },
+  heroSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  heroBadge: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 5, marginTop: 10 },
+  heroBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  tabs: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 12, padding: 3, marginBottom: 10 },
+  tab: { flex: 1, paddingVertical: 7, borderRadius: 10, alignItems: 'center' },
+  tabOn: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.09, shadowRadius: 4, elevation: 2 },
+  tabText: { fontSize: 11, fontWeight: '800', color: COLORS.muted },
+  tabTextOn: { color: COLORS.text },
+  empty: { alignItems: 'center', paddingVertical: 40 },
+  emptyIcon: { fontSize: 44, marginBottom: 10 },
+  emptyText: { fontSize: 13, fontWeight: '600', color: COLORS.muted },
+  fab: { position: 'absolute', bottom: 16, right: 16, width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 8 },
+  fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 32 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalBox: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  modalTitle: { fontSize: 17, fontWeight: '900', color: COLORS.text },
+  label: { fontSize: 11, fontWeight: '900', color: COLORS.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  input: { borderWidth: 2, borderColor: '#e8edf5', borderRadius: 11, padding: 11, fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 10 },
+  optRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  optBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: '#f1f5f9' },
+  optText: { fontSize: 12, fontWeight: '700', color: COLORS.muted },
+  microBtn: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, backgroundColor: '#f1f5f9', marginLeft: 3 },
+});
